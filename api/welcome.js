@@ -1,4 +1,4 @@
-// api/welcome.js
+// api/welcomecard.js
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 module.exports = async (req, res) => {
@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
 
     const finalTag = tag || username;
 
-    // ==== canvas lebih compact ====
+    // ==== canvas size (compact) ====
     const width = 900;
     const height = 280;
     const canvas = createCanvas(width, height);
@@ -121,6 +121,7 @@ module.exports = async (req, res) => {
     ctx.lineWidth = 6;
     ctx.stroke();
 
+    // status dot
     ctx.beginPath();
     ctx.arc(avatarCX + 42, avatarCY + 42, 12, 0, Math.PI * 2);
     ctx.fillStyle = '#22c55e';
@@ -129,25 +130,26 @@ module.exports = async (req, res) => {
     ctx.strokeStyle = isDark ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)';
     ctx.stroke();
 
-    // ==== text area ====
+    // ==== text ====
     const textLeft = avatarCX + 80;
     const textTop = cardY + 28;
     const textMain = isDark ? '#f9fafb' : '#020617';
     const textSub = isDark ? '#9ca3af' : '#4b5563';
 
+    // "Welcome to Alohomora server!"
     ctx.font = '600 22px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = textSub;
     ctx.textBaseline = 'top';
     ctx.fillText(`Welcome to ${serverName}!`, textLeft, textTop);
 
+    // display name
     ctx.font = '800 36px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = textMain;
     const nameY = textTop + 30;
     ctx.fillText(username, textLeft, nameY);
-
     const nameWidth = ctx.measureText(username).width;
 
-    // ==== badges ====
+    // ==== badges (APP, Early Supporter, dsb) ====
     function badgeStyle(key) {
       switch (key) {
         case 'app':
@@ -210,6 +212,7 @@ module.exports = async (req, res) => {
     ctx.fillText(tagText, textLeft, infoY);
     ctx.fillText(`• Member #${memberCount}`, textLeft + tagWidth + 14, infoY);
 
+    // small subtitle
     ctx.font = '400 16px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = textSub;
     ctx.fillText(
@@ -218,7 +221,7 @@ module.exports = async (req, res) => {
       infoY + 26
     );
 
-    // ==== output PNG ====
+    // output PNG
     const buffer = await canvas.encode('png');
     res.setHeader('Content-Type', 'image/png');
     res.status(200).send(buffer);
