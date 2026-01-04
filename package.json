@@ -1,0 +1,11 @@
+{
+  "name": "vercel-glass-welcomer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node api/welcome.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.50"
+  }
+}
