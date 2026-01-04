@@ -1,5 +1,10 @@
-// api/welcomecard.js
-// Simple glass welcome card (no orange wing, nggak nutupin apa-apa)
+// api/welcome.js
+// Simple glass welcome card (tanpa shape oranye)
+
+// PENTING: pastikan package.json kamu punya dependency:
+// "dependencies": { "@napi-rs/canvas": "^0.1.47", ... }
+// Kalau belum ada, tambahin lalu redeploy.
+
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 async function handler(req, res) {
@@ -21,7 +26,7 @@ async function handler(req, res) {
 
     const theme = (q.theme && String(q.theme).toLowerCase()) || 'dark';
 
-    // badges=app,early_supporter,partner
+    // contoh: badges=app,early_supporter,partner
     const badgeList =
       q.badges
         ? String(q.badges)
@@ -30,19 +35,19 @@ async function handler(req, res) {
             .filter(Boolean)
         : [];
 
+    // tag di bawah display name
     const tag =
       (q.tag && String(q.tag)) ||
       username;
 
-    // --- canvas size (horizontal, nggak tinggi banget) ---
+    // ===== Canvas =====
     const width = 900;
     const height = 260;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
-
     const isDark = theme === 'dark';
 
-    // ===== background full =====
+    // Background full
     const bg = ctx.createLinearGradient(0, 0, width, height);
     if (isDark) {
       bg.addColorStop(0, '#020617');
@@ -71,7 +76,7 @@ async function handler(req, res) {
       ctx.closePath();
     }
 
-    // ===== glass card =====
+    // Glass card
     const cardX = 24;
     const cardY = 24;
     const cardW = width - 48;
@@ -88,7 +93,7 @@ async function handler(req, res) {
       : 'rgba(148,163,184,0.6)';
     ctx.stroke();
 
-    // ===== avatar =====
+    // Avatar
     const avatarCX = cardX + 80;
     const avatarCY = height / 2;
     const avatarR = 52;
@@ -109,7 +114,7 @@ async function handler(req, res) {
     ctx.arc(avatarCX, avatarCY, avatarR + 32, 0, Math.PI * 2);
     ctx.fill();
 
-    // avatar circle
+    // avatar image
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
@@ -135,7 +140,6 @@ async function handler(req, res) {
         avatarR * 2
       );
     }
-
     ctx.restore();
 
     // avatar outline
@@ -156,20 +160,21 @@ async function handler(req, res) {
       : 'rgba(255,255,255,0.95)';
     ctx.stroke();
 
-    // ===== text =====
+    // Text
     const textLeft = avatarCX + 80;
     const textTop = cardY + 30;
     const mainColor = isDark ? '#f9fafb' : '#020617';
     const subColor = isDark ? '#9ca3af' : '#4b5563';
 
-    // small "Welcome to" text
+    ctx.textBaseline = 'top';
+
+    // "Welcome to ..."
     ctx.font =
       '600 20px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = subColor;
-    ctx.textBaseline = 'top';
     ctx.fillText(`Welcome to ${serverName}!`, textLeft, textTop);
 
-    // big username
+    // Username
     ctx.font =
       '800 34px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = mainColor;
@@ -177,7 +182,7 @@ async function handler(req, res) {
     ctx.fillText(username, textLeft, nameY);
     const nameWidth = ctx.measureText(username).width;
 
-    // ===== badges =====
+    // Badge style helper
     function badgeStyle(key) {
       switch (key) {
         case 'app':
@@ -187,17 +192,9 @@ async function handler(req, res) {
         case 'partner':
           return { label: 'Partner', bg: '#3ba55d', color: '#ffffff' };
         case 'early_supporter':
-          return {
-            label: 'Early Supporter',
-            bg: '#ffb84d',
-            color: '#1f1300'
-          };
+          return { label: 'Early Supporter', bg: '#ffb84d', color: '#1f1300' };
         case 'verified_dev':
-          return {
-            label: 'Verified Dev',
-            bg: '#5865F2',
-            color: '#ffffff'
-          };
+          return { label: 'Verified Dev', bg: '#5865F2', color: '#ffffff' };
         case 'mod_programs':
           return { label: 'Moderator', bg: '#57F287', color: '#02140a' };
         default:
@@ -209,6 +206,7 @@ async function handler(req, res) {
       }
     }
 
+    // Badges di samping nama
     ctx.font =
       '700 17px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     let badgeX = textLeft + nameWidth + 12;
@@ -232,7 +230,7 @@ async function handler(req, res) {
       badgeX += w + 8;
     });
 
-    // tag + member count
+    // Tag + member #N
     ctx.font =
       '400 17px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = subColor;
@@ -248,7 +246,7 @@ async function handler(req, res) {
       infoY
     );
 
-    // small subtitle
+    // subtitle kecil
     ctx.font =
       '400 15px system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = subColor;
@@ -258,15 +256,16 @@ async function handler(req, res) {
       infoY + 24
     );
 
+    // output PNG
     const buffer = await canvas.encode('png');
     res.statusCode = 200;
     res.setHeader('Content-Type', 'image/png');
     res.end(buffer);
   } catch (err) {
-    console.error('welcomecard error:', err);
+    console.error('welcome error:', err);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.end('Error in welcomecard:\n' + err.stack);
+    res.end('Error in welcome:\n' + err.stack);
   }
 }
 
