@@ -6,6 +6,6 @@
     "start": "node api/welcome.js"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.43"
+    "@napi-rs/canvas": "^0.1.47"
   }
 }
