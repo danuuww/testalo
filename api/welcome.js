@@ -1,297 +1,252 @@
 // api/welcome.js
-// GUARANTEED TEXT RENDERING - Pure transparent glass card
-// Fixed for Vercel & Environments without system fonts
+import { createCanvas, loadImage, GlobalFonts } from "@napi-rs/canvas";
 
-const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
-
-// Cache font loading to avoid fetching on every request (if container is reused)
 let isFontLoaded = false;
+const badgeCache = new Map();
 
-async function loadFonts() {
-  if (isFontLoaded) return;
-  
-  try {
-    // Register a default sans-serif font (Inter) to ensure text renders
-    // Vercel serverless functions often lack system fonts
-    const fontUrl = "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Bold.ttf";
-    const response = await fetch(fontUrl);
-    
-    if (!response.ok) {
-        throw new Error(`Failed to fetch font: ${response.statusText}`);
+async function loadAssets() {
+  if (!isFontLoaded) {
+    try {
+      const fontUrl = "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Bold.ttf";
+      const response = await fetch(fontUrl);
+      if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        GlobalFonts.register(buffer, "Inter");
+        isFontLoaded = true;
+      }
+    } catch (e) {
+      console.error("Font loading error:", e);
     }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    GlobalFonts.register(buffer, "Inter");
-    isFontLoaded = true;
-    console.log("Font loaded successfully");
-  } catch (error) {
-    console.error("Font loading error:", error);
-    // Fallback: try to register system fonts if possible, though unlikely to work in serverless if missing
-    // GlobalFonts.registerFromPath if you had a local file
+  }
+}
+
+async function getBadgeImage(type) {
+  if (badgeCache.has(type)) return badgeCache.get(type);
+  const badgeUrls = {
+    nitro: "https://raw.githubusercontent.com/mezotv/discord-badges/main/assets/nitro.png",
+    booster: "https://raw.githubusercontent.com/mezotv/discord-badges/main/assets/boost1.png",
+    staff: "https://raw.githubusercontent.com/mezotv/discord-badges/main/assets/staff.png",
+    partner: "https://raw.githubusercontent.com/mezotv/discord-badges/main/assets/partner.png",
+    verified_dev: "https://raw.githubusercontent.com/mezotv/discord-badges/main/assets/verifieddeveloper.png",
+    early_supporter: "https://raw.githubusercontent.com/mezotv/discord-badges/main/assets/earlysupporter.png",
+  };
+  if (!badgeUrls[type]) return null;
+  try {
+    const img = await loadImage(badgeUrls[type]);
+    badgeCache.set(type, img);
+    return img;
+  } catch (e) {
+    return null;
   }
 }
 
 async function handler(req, res) {
   try {
-    // Ensure fonts are loaded before drawing
-    await loadFonts();
-
+    await loadAssets();
     const q = req.query || {};
+    const displayName = q.displayName || q.username || "New Member";
+    const avatarUrl = q.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
+    const serverName = q.serverName || "Discord Server";
+    const memberCount = q.memberCount || "1,234";
+    const guildTag = q.guildTag || "KING";
+    const badges = q.badges ? String(q.badges).split(",").map(b => b.trim()).filter(Boolean) : ["nitro", "booster"];
 
-    const username = (q.username && String(q.username)) || "NewMember";
-    const displayName = (q.displayName && String(q.displayName)) || username;
-    const avatarUrl =
-      (q.avatarUrl && String(q.avatarUrl)) ||
-      "https://cdn.discordapp.com/embed/avatars/0.png";
-    const serverName = (q.serverName && String(q.serverName)) || "Alohomora";
-    const memberCount = (q.memberCount && String(q.memberCount)) || "1";
-    const theme = (q.theme && String(q.theme).toLowerCase()) || "dark";
-
-    const badgeList = q.badges
-      ? String(q.badges)
-          .split(",")
-          .map((b) => b.trim())
-          .filter(Boolean)
-      : [];
-
-    const guildTag = q.guildTag ? String(q.guildTag).trim() : "";
-
-    // Canvas
     const width = 1000;
-    const height = 300;
+    const height = 400;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
-    const isDark = theme === "dark";
+    const font = isFontLoaded ? "Inter" : "sans-serif";
 
-    // Helper
-    function roundRect(x, y, w, h, r) {
-      const radius = typeof r === "number" ? r : 20;
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + w - radius, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-      ctx.lineTo(x + w, y + h - radius);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-      ctx.lineTo(x + radius, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
-    }
+    // 1. CLEAR CANVAS
+    ctx.clearRect(0, 0, width, height);
 
-    // Glass card
-    const cardX = 20;
-    const cardY = 20;
-    const cardW = width - 40;
-    const cardH = height - 40;
-    const radius = 36;
-
-    roundRect(cardX, cardY, cardW, cardH, radius);
-
-    // Glass effect
-    const glassGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
-    if (isDark) {
-      glassGrad.addColorStop(0, "rgba(30, 41, 59, 0.95)");
-      glassGrad.addColorStop(1, "rgba(15, 23, 42, 0.92)");
-    } else {
-      glassGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-      glassGrad.addColorStop(1, "rgba(248, 250, 252, 0.92)");
-    }
-    ctx.fillStyle = glassGrad;
+    // 2. BACKGROUND ELEMENTS (Decorative Shapes for "Mata Manja")
+    ctx.save();
+    // Glassy Orb 1
+    const orb1 = ctx.createRadialGradient(200, 100, 0, 200, 100, 150);
+    orb1.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+    orb1.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = orb1;
+    ctx.beginPath();
+    ctx.arc(200, 100, 150, 0, Math.PI * 2);
     ctx.fill();
 
-    // Border
-    ctx.strokeStyle = isDark
-      ? "rgba(148, 163, 184, 0.5)"
-      : "rgba(203, 213, 225, 0.7)";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+    // Glassy Orb 2
+    const orb2 = ctx.createRadialGradient(800, 300, 0, 800, 300, 200);
+    orb2.addColorStop(0, "rgba(255, 255, 255, 0.08)");
+    orb2.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = orb2;
+    ctx.beginPath();
+    ctx.arc(800, 300, 200, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
-    // Inner highlight
+    // 3. MAIN CARD
+    const cardX = 40;
+    const cardY = 40;
+    const cardW = width - 80;
+    const cardH = height - 80;
+    const radius = 50;
+
+    const roundRect = (x, y, w, h, r) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    };
+
+    // Card Surface - High Clarity Frosted Glass
     ctx.save();
-    roundRect(cardX + 2, cardY + 2, cardW - 4, cardH - 4, radius - 2);
-    ctx.strokeStyle = isDark
-      ? "rgba(241, 245, 249, 0.12)"
-      : "rgba(255, 255, 255, 0.7)";
+    roundRect(cardX, cardY, cardW, cardH, radius);
+    const glass = ctx.createLinearGradient(0, cardY, 0, cardY + cardH);
+    glass.addColorStop(0, "rgba(255, 255, 255, 0.15)");
+    glass.addColorStop(0.5, "rgba(255, 255, 255, 0.08)");
+    glass.addColorStop(1, "rgba(255, 255, 255, 0.12)");
+    ctx.fillStyle = glass;
+    ctx.fill();
+
+    // Soft Inner Highlight
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.restore();
 
-    // Avatar
-    const avatarCX = cardX + 90;
-    const avatarCY = height / 2;
-    const avatarR = 60;
+    // 4. AVATAR SECTION
+    const avatarSize = 220;
+    const avatarX = 80;
+    const avatarY = (height - avatarSize) / 2;
 
-    // Glow
-    const glow = ctx.createRadialGradient(avatarCX, avatarCY, 0, avatarCX, avatarCY, avatarR + 28);
-    glow.addColorStop(0, "rgba(99, 102, 241, 0.45)");
-    glow.addColorStop(1, "rgba(99, 102, 241, 0)");
-    ctx.fillStyle = glow;
+    // Avatar Glow Background
+    const avGlow = ctx.createRadialGradient(avatarX + avatarSize/2, avatarY + avatarSize/2, 0, avatarX + avatarSize/2, avatarY + avatarSize/2, avatarSize/2 + 60);
+    avGlow.addColorStop(0, "rgba(255, 255, 255, 0.15)");
+    avGlow.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = avGlow;
     ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR + 28, 0, Math.PI * 2);
+    ctx.arc(avatarX + avatarSize/2, avatarY + avatarSize/2, avatarSize/2 + 60, 0, Math.PI * 2);
     ctx.fill();
-
-    // Avatar circle
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
-    ctx.fillStyle = isDark ? "#475569" : "#cbd5e1";
-    ctx.fill();
-
-    // Load avatar
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
 
     try {
       const img = await loadImage(avatarUrl);
-      ctx.drawImage(img, avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
+      ctx.save();
+      roundRect(avatarX, avatarY, avatarSize, avatarSize, 60);
+      ctx.clip();
+      ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize);
+      ctx.restore();
     } catch (e) {
-      // Fallback
-      ctx.fillStyle = isDark ? "#64748b" : "#94a3b8";
-      // Use loaded font if available
-      ctx.font = isFontLoaded ? "bold 48px Inter" : "bold 48px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(displayName.charAt(0).toUpperCase(), avatarCX, avatarCY);
+      roundRect(avatarX, avatarY, avatarSize, avatarSize, 60);
+      ctx.fillStyle = "rgba(255,255,255,0.1)";
+      ctx.fill();
     }
-    ctx.restore();
 
-    // Avatar ring
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)";
-    ctx.lineWidth = 7;
-    ctx.stroke();
-
-    // Status
-    ctx.beginPath();
-    ctx.arc(avatarCX + 44, avatarCY + 46, 12, 0, Math.PI * 2);
-    ctx.fillStyle = "#22c55e";
-    ctx.fill();
-    ctx.strokeStyle = isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)";
+    // Avatar Rim
+    roundRect(avatarX, avatarY, avatarSize, avatarSize, 60);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // ===== TEXT RENDERING - FIXED =====
-    const textLeft = avatarCX + 100;
-    const mainColor = isDark ? "#ffffff" : "#0f172a";
-    const subColor = isDark ? "#e2e8f0" : "#475569";
+    // 5. CONTENT SECTION (Optimized Spacing & Hierarchy)
+    const contentX = avatarX + avatarSize + 60;
+    const contentY = height / 2;
 
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
+    // Server Tagline with Line
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.font = `800 18px ${font}`;
+    ctx.letterSpacing = "2px";
+    ctx.fillText("SERVER MEMBER JOINED", contentX, contentY - 85);
+    
+    // Decorative Line
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.beginPath();
+    ctx.moveTo(contentX, contentY - 70);
+    ctx.lineTo(contentX + 150, contentY - 70);
+    ctx.stroke();
 
-    // Set font based on availability
-    const fontName = isFontLoaded ? "Inter" : "sans-serif";
-
-    // Welcome text
-    ctx.font = `600 22px ${fontName}`;
-    ctx.fillStyle = subColor;
-    const welcomeText = `Welcome to ${serverName} server!`;
-    ctx.fillText(welcomeText, textLeft, cardY + 36);
-
-    // Display name - BOLD dan BESAR
-    const nameToShow = displayName || username;
-    ctx.font = `bold 42px ${fontName}`;
-    ctx.fillStyle = mainColor;
-    const nameY = cardY + 72;
-    ctx.fillText(nameToShow, textLeft, nameY);
-    const nameWidth = ctx.measureText(nameToShow).width;
-
-    // Badges
-    function getBadgeStyle(key) {
-      const styles = {
-        app: { label: "APP", bg: "#5865F2", color: "#ffffff" },
-        staff: { label: "STAFF", bg: "#f04747", color: "#ffffff" },
-        partner: { label: "PARTNER", bg: "#3ba55d", color: "#ffffff" },
-        early_supporter: { label: "EARLY", bg: "#ffb84d", color: "#1a0d00" },
-        verified_dev: { label: "DEV", bg: "#5865F2", color: "#ffffff" },
-        mod_programs: { label: "MOD", bg: "#57F287", color: "#0a2e13" },
-        hypesquad: { label: "HYPESQUAD", bg: "#f47fff", color: "#ffffff" },
-        bug_hunter: { label: "BUG", bg: "#3ba55d", color: "#ffffff" },
-        nitro: { label: "NITRO", bg: "#ff73fa", color: "#ffffff" },
-        booster: { label: "BOOST", bg: "#f47fff", color: "#ffffff" },
-      };
-      return styles[key] || { label: key.toUpperCase().slice(0, 8), bg: "#6b7280", color: "#ffffff" };
+    // Display Name (Large & Impactful with Auto-scaling)
+    ctx.fillStyle = "#FFFFFF";
+    let fontSize = 72;
+    ctx.font = `bold ${fontSize}px ${font}`;
+    
+    // Auto-scale font size if name is too long
+    const maxWidth = cardW - (avatarSize + 140) - (guildTag ? 150 : 0);
+    while (ctx.measureText(displayName).width > maxWidth && fontSize > 32) {
+      fontSize -= 2;
+      ctx.font = `bold ${fontSize}px ${font}`;
     }
-
-    ctx.font = `bold 16px ${fontName}`;
+    
     ctx.textBaseline = "middle";
+    ctx.fillText(displayName, contentX, contentY - 10);
+    const nameWidth = ctx.measureText(displayName).width;
 
-    let badgeX = textLeft + nameWidth + 14;
-    const badgeY = nameY + 21;
-    const maxBadgeWidth = cardX + cardW - badgeX - 30;
-    let currentWidth = 0;
-
-    badgeList.forEach((key) => {
-      const { label, bg, color } = getBadgeStyle(key);
-      const pad = 11;
-      const h = 26;
-      const tw = ctx.measureText(label).width;
-      const w = tw + pad * 2;
-
-      if (currentWidth + w > maxBadgeWidth) return;
-
-      roundRect(badgeX, badgeY - h / 2, w, h, 13);
-      ctx.fillStyle = bg;
-      ctx.fill();
-      ctx.fillStyle = color;
-      ctx.fillText(label, badgeX + pad, badgeY);
-
-      badgeX += w + 8;
-      currentWidth += w + 8;
-    });
-
-    // Guild tag + Member
-    ctx.textBaseline = "top";
-    const infoY = nameY + 54;
-    let infoX = textLeft;
-
+    // Discord Guild Tag (Integrated)
     if (guildTag) {
-      ctx.font = `bold 15px ${fontName}`;
-      const gt = guildTag.slice(0, 15);
-      const gtw = ctx.measureText(gt).width + 20;
+      const tagText = guildTag;
+      ctx.font = `800 22px ${font}`;
+      const tw = ctx.measureText(tagText).width;
+      const tx = contentX + nameWidth + 25;
+      const ty = contentY - 32;
+      const padding = 12;
 
-      roundRect(infoX, infoY - 1, gtw, 24, 12);
-      ctx.fillStyle = isDark ? "rgba(99, 102, 241, 0.35)" : "rgba(99, 102, 241, 0.25)";
+      roundRect(tx, ty, tw + padding * 2, 40, 12);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
       ctx.fill();
-      ctx.strokeStyle = isDark ? "rgba(129, 140, 248, 0.6)" : "rgba(99, 102, 241, 0.5)";
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
       ctx.stroke();
 
-      ctx.fillStyle = isDark ? "#c7d2fe" : "#6366f1";
-      ctx.textBaseline = "middle";
-      ctx.fillText(gt, infoX + 10, infoY + 12);
-
-      infoX += gtw + 12;
-      ctx.textBaseline = "top";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.fillText(tagText, tx + padding, ty + 20);
     }
 
-    ctx.font = `500 18px ${fontName}`;
-    ctx.fillStyle = subColor;
-    ctx.fillText(`Member #${memberCount}`, infoX, infoY);
+    // Badges Container
+    let badgeX = contentX;
+    const badgeY = contentY + 45;
+    const badgeSize = 36;
+    
+    // Badge Group Background (Premium Touch)
+    const badgeGroupW = badges.length * (badgeSize + 15) + 10;
+    if (badges.length > 0) {
+        roundRect(badgeX - 10, badgeY - 5, badgeGroupW, badgeSize + 10, 12);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fill();
+    }
 
-    // Subtitle
-    ctx.font = `400 17px ${fontName}`;
-    ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
-    ctx.fillText("We're glad you're here!", textLeft, infoY + 32);
+    for (const type of badges) {
+      const img = await getBadgeImage(type);
+      if (img) {
+        ctx.drawImage(img, badgeX, badgeY, badgeSize, badgeSize);
+        badgeX += badgeSize + 15;
+      }
+    }
 
-    // Output
+    // Footer Info (Member Count & Server Name)
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.font = `600 24px ${font}`;
+    const footerY = contentY + 110;
+    ctx.fillText(`MEMBER #${memberCount}`, contentX, footerY);
+    
+    const countW = ctx.measureText(`MEMBER #${memberCount}`).width;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.fillText(" • ", contentX + countW, footerY);
+    
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.fillText(serverName.toUpperCase(), contentX + countW + 25, footerY);
+
+    // Final Output
     const buffer = await canvas.encode("png");
-    res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=120");
-    res.end(buffer);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(buffer);
   } catch (err) {
-    console.error("Error:", err);
-    res.statusCode = 500;
-    res.setHeader("Content-Type", "text/plain");
-    res.end("Error: " + err.message);
+    console.error(err);
+    res.status(500).send("Error");
   }
 }
 
-module.exports = handler;
-exports.default = handler;
+export default handler;
