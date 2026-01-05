@@ -1,7 +1,7 @@
 // api/welcome.js
-// PURE TRANSPARENT - Only glass card visible
+// GUARANTEED TEXT RENDERING - Pure transparent glass card
 
-const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
 
 async function handler(req, res) {
   try {
@@ -32,9 +32,6 @@ async function handler(req, res) {
     const ctx = canvas.getContext("2d");
     const isDark = theme === "dark";
 
-    // ===== PENTING: TRANSPARENT BACKGROUND =====
-    // Jangan pakai fillRect atau apapun di sini!
-
     // Helper
     function roundRect(x, y, w, h, r) {
       const radius = typeof r === "number" ? r : 20;
@@ -51,41 +48,40 @@ async function handler(req, res) {
       ctx.closePath();
     }
 
-    // Glass card ONLY
+    // Glass card
     const cardX = 20;
     const cardY = 20;
     const cardW = width - 40;
     const cardH = height - 40;
     const radius = 36;
 
-    // Draw glass card dengan backdrop blur effect
     roundRect(cardX, cardY, cardW, cardH, radius);
 
-    // Glass gradient
+    // Glass effect
     const glassGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
     if (isDark) {
-      glassGrad.addColorStop(0, "rgba(30, 41, 59, 0.92)");
-      glassGrad.addColorStop(1, "rgba(15, 23, 42, 0.88)");
+      glassGrad.addColorStop(0, "rgba(30, 41, 59, 0.95)");
+      glassGrad.addColorStop(1, "rgba(15, 23, 42, 0.92)");
     } else {
-      glassGrad.addColorStop(0, "rgba(255, 255, 255, 0.92)");
-      glassGrad.addColorStop(1, "rgba(248, 250, 252, 0.88)");
+      glassGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+      glassGrad.addColorStop(1, "rgba(248, 250, 252, 0.92)");
     }
     ctx.fillStyle = glassGrad;
     ctx.fill();
 
     // Border
     ctx.strokeStyle = isDark
-      ? "rgba(148, 163, 184, 0.4)"
-      : "rgba(203, 213, 225, 0.6)";
-    ctx.lineWidth = 2;
+      ? "rgba(148, 163, 184, 0.5)"
+      : "rgba(203, 213, 225, 0.7)";
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Inner highlight (glassmorphism effect)
+    // Inner highlight
     ctx.save();
     roundRect(cardX + 2, cardY + 2, cardW - 4, cardH - 4, radius - 2);
     ctx.strokeStyle = isDark
-      ? "rgba(241, 245, 249, 0.1)"
-      : "rgba(255, 255, 255, 0.6)";
+      ? "rgba(241, 245, 249, 0.12)"
+      : "rgba(255, 255, 255, 0.7)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.restore();
@@ -97,14 +93,14 @@ async function handler(req, res) {
 
     // Glow
     const glow = ctx.createRadialGradient(avatarCX, avatarCY, 0, avatarCX, avatarCY, avatarR + 28);
-    glow.addColorStop(0, "rgba(99, 102, 241, 0.4)");
+    glow.addColorStop(0, "rgba(99, 102, 241, 0.45)");
     glow.addColorStop(1, "rgba(99, 102, 241, 0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(avatarCX, avatarCY, avatarR + 28, 0, Math.PI * 2);
     ctx.fill();
 
-    // Avatar background
+    // Avatar circle
     ctx.beginPath();
     ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
     ctx.fillStyle = isDark ? "#475569" : "#cbd5e1";
@@ -121,9 +117,9 @@ async function handler(req, res) {
       const img = await loadImage(avatarUrl);
       ctx.drawImage(img, avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
     } catch (e) {
-      // Fallback: initial letter
+      // Fallback
       ctx.fillStyle = isDark ? "#64748b" : "#94a3b8";
-      ctx.font = "bold 48px Arial";
+      ctx.font = "bold 48px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(displayName.charAt(0).toUpperCase(), avatarCX, avatarCY);
@@ -133,34 +129,37 @@ async function handler(req, res) {
     // Avatar ring
     ctx.beginPath();
     ctx.arc(avatarCX, avatarCY, avatarR + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = isDark ? "rgba(30, 41, 59, 0.9)" : "rgba(255, 255, 255, 0.9)";
+    ctx.strokeStyle = isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)";
     ctx.lineWidth = 7;
     ctx.stroke();
 
-    // Status dot
+    // Status
     ctx.beginPath();
     ctx.arc(avatarCX + 44, avatarCY + 46, 12, 0, Math.PI * 2);
     ctx.fillStyle = "#22c55e";
     ctx.fill();
-    ctx.strokeStyle = isDark ? "rgba(30, 41, 59, 0.9)" : "rgba(255, 255, 255, 0.9)";
+    ctx.strokeStyle = isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)";
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Text area
+    // ===== TEXT RENDERING - FIXED =====
     const textLeft = avatarCX + 100;
-    const mainColor = isDark ? "#f1f5f9" : "#0f172a";
-    const subColor = isDark ? "#cbd5e1" : "#475569";
+    const mainColor = isDark ? "#ffffff" : "#0f172a";
+    const subColor = isDark ? "#e2e8f0" : "#475569";
 
-    // Welcome text
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.font = "600 22px Arial, 'Segoe UI', sans-serif";
-    ctx.fillStyle = subColor;
-    ctx.fillText(`Welcome to ${serverName} server!`, textLeft, cardY + 36);
 
-    // Display name
+    // PENTING: Set font dengan format yang benar
+    // Welcome text
+    ctx.font = "600 22px sans-serif";
+    ctx.fillStyle = subColor;
+    const welcomeText = `Welcome to ${serverName} server!`;
+    ctx.fillText(welcomeText, textLeft, cardY + 36);
+
+    // Display name - BOLD dan BESAR
     const nameToShow = displayName || username;
-    ctx.font = "bold 42px Arial, 'Segoe UI', sans-serif";
+    ctx.font = "bold 42px sans-serif";
     ctx.fillStyle = mainColor;
     const nameY = cardY + 72;
     ctx.fillText(nameToShow, textLeft, nameY);
@@ -169,32 +168,36 @@ async function handler(req, res) {
     // Badges
     function getBadgeStyle(key) {
       const styles = {
-        app: { label: "APP", bg: "#5865F2", color: "#fff" },
-        staff: { label: "STAFF", bg: "#f04747", color: "#fff" },
-        partner: { label: "PARTNER", bg: "#3ba55d", color: "#fff" },
+        app: { label: "APP", bg: "#5865F2", color: "#ffffff" },
+        staff: { label: "STAFF", bg: "#f04747", color: "#ffffff" },
+        partner: { label: "PARTNER", bg: "#3ba55d", color: "#ffffff" },
         early_supporter: { label: "EARLY", bg: "#ffb84d", color: "#1a0d00" },
-        verified_dev: { label: "DEV", bg: "#5865F2", color: "#fff" },
+        verified_dev: { label: "DEV", bg: "#5865F2", color: "#ffffff" },
         mod_programs: { label: "MOD", bg: "#57F287", color: "#0a2e13" },
-        hypesquad: { label: "HYPESQUAD", bg: "#f47fff", color: "#fff" },
-        bug_hunter: { label: "BUG", bg: "#3ba55d", color: "#fff" },
-        nitro: { label: "NITRO", bg: "#ff73fa", color: "#fff" },
-        booster: { label: "BOOST", bg: "#f47fff", color: "#fff" },
+        hypesquad: { label: "HYPESQUAD", bg: "#f47fff", color: "#ffffff" },
+        bug_hunter: { label: "BUG", bg: "#3ba55d", color: "#ffffff" },
+        nitro: { label: "NITRO", bg: "#ff73fa", color: "#ffffff" },
+        booster: { label: "BOOST", bg: "#f47fff", color: "#ffffff" },
       };
-      return styles[key] || { label: key.toUpperCase().slice(0, 8), bg: "#6b7280", color: "#fff" };
+      return styles[key] || { label: key.toUpperCase().slice(0, 8), bg: "#6b7280", color: "#ffffff" };
     }
 
-    ctx.font = "bold 16px Arial, 'Segoe UI', sans-serif";
+    ctx.font = "bold 16px sans-serif";
     ctx.textBaseline = "middle";
 
     let badgeX = textLeft + nameWidth + 14;
     const badgeY = nameY + 21;
+    const maxBadgeWidth = cardX + cardW - badgeX - 30;
+    let currentWidth = 0;
 
-    badgeList.slice(0, 6).forEach((key) => {
+    badgeList.forEach((key) => {
       const { label, bg, color } = getBadgeStyle(key);
       const pad = 11;
       const h = 26;
       const tw = ctx.measureText(label).width;
       const w = tw + pad * 2;
+
+      if (currentWidth + w > maxBadgeWidth) return;
 
       roundRect(badgeX, badgeY - h / 2, w, h, 13);
       ctx.fillStyle = bg;
@@ -203,22 +206,23 @@ async function handler(req, res) {
       ctx.fillText(label, badgeX + pad, badgeY);
 
       badgeX += w + 8;
+      currentWidth += w + 8;
     });
 
-    // Guild tag + Member count
+    // Guild tag + Member
     ctx.textBaseline = "top";
     const infoY = nameY + 54;
     let infoX = textLeft;
 
     if (guildTag) {
-      ctx.font = "bold 15px Arial, 'Segoe UI', sans-serif";
+      ctx.font = "bold 15px sans-serif";
       const gt = guildTag.slice(0, 15);
       const gtw = ctx.measureText(gt).width + 20;
 
       roundRect(infoX, infoY - 1, gtw, 24, 12);
-      ctx.fillStyle = isDark ? "rgba(99, 102, 241, 0.3)" : "rgba(99, 102, 241, 0.2)";
+      ctx.fillStyle = isDark ? "rgba(99, 102, 241, 0.35)" : "rgba(99, 102, 241, 0.25)";
       ctx.fill();
-      ctx.strokeStyle = isDark ? "rgba(129, 140, 248, 0.5)" : "rgba(99, 102, 241, 0.4)";
+      ctx.strokeStyle = isDark ? "rgba(129, 140, 248, 0.6)" : "rgba(99, 102, 241, 0.5)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -230,16 +234,16 @@ async function handler(req, res) {
       ctx.textBaseline = "top";
     }
 
-    ctx.font = "500 18px Arial, 'Segoe UI', sans-serif";
+    ctx.font = "500 18px sans-serif";
     ctx.fillStyle = subColor;
     ctx.fillText(`Member #${memberCount}`, infoX, infoY);
 
     // Subtitle
-    ctx.font = "400 17px Arial, 'Segoe UI', sans-serif";
+    ctx.font = "400 17px sans-serif";
     ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
     ctx.fillText("We're glad you're here!", textLeft, infoY + 32);
 
-    // Output PNG
+    // Output
     const buffer = await canvas.encode("png");
     res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
