@@ -48,7 +48,7 @@ async function handler(req, res) {
     const avatarUrl = q.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png";
     const serverName = q.serverName || "Discord Server";
     const memberCount = q.memberCount || "1,234";
-    const guildTag = q.guildTag || "KING";
+    const guildTag = q.guildTag ?? "BLUU";
     const badges = q.badges ? String(q.badges).split(",").map(b => b.trim()).filter(Boolean) : ["nitro", "booster"];
 
     const width = 1000;
