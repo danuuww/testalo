@@ -1,10 +1,43 @@
 // api/welcome.js
 // GUARANTEED TEXT RENDERING - Pure transparent glass card
+// Fixed for Vercel & Environments without system fonts
 
 const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
 
+// Cache font loading to avoid fetching on every request (if container is reused)
+let isFontLoaded = false;
+
+async function loadFonts() {
+  if (isFontLoaded) return;
+  
+  try {
+    // Register a default sans-serif font (Inter) to ensure text renders
+    // Vercel serverless functions often lack system fonts
+    const fontUrl = "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Bold.ttf";
+    const response = await fetch(fontUrl);
+    
+    if (!response.ok) {
+        throw new Error(`Failed to fetch font: ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    GlobalFonts.register(buffer, "Inter");
+    isFontLoaded = true;
+    console.log("Font loaded successfully");
+  } catch (error) {
+    console.error("Font loading error:", error);
+    // Fallback: try to register system fonts if possible, though unlikely to work in serverless if missing
+    // GlobalFonts.registerFromPath if you had a local file
+  }
+}
+
 async function handler(req, res) {
   try {
+    // Ensure fonts are loaded before drawing
+    await loadFonts();
+
     const q = req.query || {};
 
     const username = (q.username && String(q.username)) || "NewMember";
@@ -119,7 +152,8 @@ async function handler(req, res) {
     } catch (e) {
       // Fallback
       ctx.fillStyle = isDark ? "#64748b" : "#94a3b8";
-      ctx.font = "bold 48px sans-serif";
+      // Use loaded font if available
+      ctx.font = isFontLoaded ? "bold 48px Inter" : "bold 48px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(displayName.charAt(0).toUpperCase(), avatarCX, avatarCY);
@@ -150,16 +184,18 @@ async function handler(req, res) {
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
 
-    // PENTING: Set font dengan format yang benar
+    // Set font based on availability
+    const fontName = isFontLoaded ? "Inter" : "sans-serif";
+
     // Welcome text
-    ctx.font = "600 22px sans-serif";
+    ctx.font = `600 22px ${fontName}`;
     ctx.fillStyle = subColor;
     const welcomeText = `Welcome to ${serverName} server!`;
     ctx.fillText(welcomeText, textLeft, cardY + 36);
 
     // Display name - BOLD dan BESAR
     const nameToShow = displayName || username;
-    ctx.font = "bold 42px sans-serif";
+    ctx.font = `bold 42px ${fontName}`;
     ctx.fillStyle = mainColor;
     const nameY = cardY + 72;
     ctx.fillText(nameToShow, textLeft, nameY);
@@ -182,7 +218,7 @@ async function handler(req, res) {
       return styles[key] || { label: key.toUpperCase().slice(0, 8), bg: "#6b7280", color: "#ffffff" };
     }
 
-    ctx.font = "bold 16px sans-serif";
+    ctx.font = `bold 16px ${fontName}`;
     ctx.textBaseline = "middle";
 
     let badgeX = textLeft + nameWidth + 14;
@@ -215,7 +251,7 @@ async function handler(req, res) {
     let infoX = textLeft;
 
     if (guildTag) {
-      ctx.font = "bold 15px sans-serif";
+      ctx.font = `bold 15px ${fontName}`;
       const gt = guildTag.slice(0, 15);
       const gtw = ctx.measureText(gt).width + 20;
 
@@ -234,12 +270,12 @@ async function handler(req, res) {
       ctx.textBaseline = "top";
     }
 
-    ctx.font = "500 18px sans-serif";
+    ctx.font = `500 18px ${fontName}`;
     ctx.fillStyle = subColor;
     ctx.fillText(`Member #${memberCount}`, infoX, infoY);
 
     // Subtitle
-    ctx.font = "400 17px sans-serif";
+    ctx.font = `400 17px ${fontName}`;
     ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
     ctx.fillText("We're glad you're here!", textLeft, infoY + 32);
 
